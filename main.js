@@ -26,54 +26,33 @@ scene.add(directionalLight);
 camera.position.set(0, 1, 5); // Adjust as needed
 camera.lookAt(0, 0, 0); // Look at center
 
-const MAX_POINTS = 500;
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { GlitchPass } from "three/addons/postprocessing/GlitchPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
-// geometry
-const geometry = new THREE.BufferGeometry();
+const composer = new EffectComposer(renderer);
 
-// attributes
-const positions = new Float32Array(MAX_POINTS * 3); // 3 floats (x, y and z) per point
-geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+function animate() {
+  requestAnimationFrame(animate);
 
-// draw range
-const drawCount = 2; // draw the first 2 points, only
-geometry.setDrawRange(0, drawCount);
-
-// material
-const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-
-// line
-const line = new THREE.Line(geometry, material);
-
-const positionAttribute = line.geometry.getAttribute("position");
-
-let x = 0,
-  y = 0,
-  z = 0;
-
-for (let i = 0; i < positionAttribute.count; i++) {
-  positionAttribute.setXYZ(i, x, y, z);
-
-  x += (Math.random() - 0.5) * 30;
-  y += (Math.random() - 0.5) * 30;
-  z += (Math.random() - 0.5) * 30;
+  composer.render();
 }
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
 
-line.geometry.setDrawRange(0, 10);
+const glitchPass = new GlitchPass();
+composer.addPass(glitchPass);
 
-scene.add(line);
+const outputPass = new OutputPass();
+composer.addPass(outputPass);
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { LuminosityShader } from "three/addons/shaders/LuminosityShader.js";
 
-positionAttribute.needsUpdate = true; // required after the first render
+// later in your init routine
 
-line.geometry.computeBoundingBox();
-line.geometry.computeBoundingSphere();
+const luminosityPass = new ShaderPass(LuminosityShader);
+composer.addPass(luminosityPass);
 
-renderer.render(scene, camera);
-
-import { VRButton } from "three/addons/webxr/VRButton.js";
-VRButton.position.setXYZ(10, 10, 10);
-document.body.appendChild(VRButton.createButton(renderer));
-renderer.xr.enabled = true;
-renderer.setAnimationLoop(function () {
-  renderer.render(scene, camera);
-});
+animate();
+// renderer.render(scene, camera);
