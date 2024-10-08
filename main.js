@@ -82,7 +82,6 @@ function animate() {
   if (mesh) {
     mesh.rotation.x += 0.01; // Rotate the mesh around the Y axis
   }
-  console.log("-=----------");
   render(); // Render the scene.
 }
 
