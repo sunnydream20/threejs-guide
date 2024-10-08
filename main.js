@@ -1,79 +1,97 @@
 /** @format */
 
 import * as THREE from "three";
+// import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.137.0/examples/jsm/loaders/GLTFLoader.js";
+
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x000000, 1);
-document.body.appendChild(renderer.domElement);
+let scene, camera, renderer, mixer, mesh;
+const clock = new THREE.Clock();
 
-// Lighting
-const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
-scene.add(ambientLight);
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(5, 5, 5).normalize();
-scene.add(directionalLight);
+init();
+animate();
 
-// Position the camera
-camera.position.set(0, 1, 5); // Adjust as needed
-camera.lookAt(0, 0, 0); // Look at center
+function init() {
+  // Create scene
+  scene = new THREE.Scene();
 
-const MAX_POINTS = 500;
+  // Set up camera
+  camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(0, 1.5, 5); // Set camera further back
+  camera.lookAt(0, 0, 0); // Look at the center of the scene
 
-// geometry
-const geometry = new THREE.BufferGeometry();
+  // Set up renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
 
-// attributes
-const positions = new Float32Array(MAX_POINTS * 3); // 3 floats (x, y and z) per point
-geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  // Add some basic lighting
+  const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
+  scene.add(ambientLight);
 
-// draw range
-const drawCount = 2; // draw the first 2 points, only
-geometry.setDrawRange(0, drawCount);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  scene.add(directionalLight);
 
-// material
-const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+  // Load GLTF model with animations
+  const loader = new GLTFLoader();
+  loader.load(
+    "stylized_big_sword.glb",
+    (gltf) => {
+      mesh = gltf.scene;
+      mesh.scale.set(1, 1, 1);
+      // Add model to scene
+      scene.add(mesh);
 
-// line
-const line = new THREE.Line(geometry, material);
+      // Create AnimationMixer
+      mixer = new THREE.AnimationMixer(mesh);
 
-const positionAttribute = line.geometry.getAttribute("position");
+      // Get clips and play a specific animation
+      const clips = gltf.animations;
 
-let x = 0,
-  y = 0,
-  z = 0;
+      // Play the specified "dance" animation
+      const clip = THREE.AnimationClip.findByName(clips, "dance");
+      if (clip) {
+        const action = mixer.clipAction(clip);
+        action.play();
+      }
 
-for (let i = 0; i < positionAttribute.count; i++) {
-  positionAttribute.setXYZ(i, x, y, z);
+      // Optional: Play all animations
+      // clips.forEach((clip) => {
+      //     mixer.clipAction(clip).play();
+      // });
+    },
+    undefined,
+    (error) => {
+      // console.log(error);
+    }
+  );
 
-  x += (Math.random() - 0.5) * 30;
-  y += (Math.random() - 0.5) * 30;
-  z += (Math.random() - 0.5) * 30;
+  // Handle window resize
+  window.addEventListener("resize", onWindowResize, false);
 }
 
-line.geometry.setDrawRange(0, 10);
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = clock.getDelta(); // seconds.
+  if (mixer) mixer.update(delta); // Update the mixer.
+  if (mesh) {
+    mesh.rotation.x += 0.01; // Rotate the mesh around the Y axis
+  }
+  console.log("-=----------");
+  render(); // Render the scene.
+}
 
-scene.add(line);
-
-positionAttribute.needsUpdate = true; // required after the first render
-
-line.geometry.computeBoundingBox();
-line.geometry.computeBoundingSphere();
-
-renderer.render(scene, camera);
-
-import { VRButton } from "three/addons/webxr/VRButton.js";
-VRButton.position.setXYZ(10, 10, 10);
-document.body.appendChild(VRButton.createButton(renderer));
-renderer.xr.enabled = true;
-renderer.setAnimationLoop(function () {
+function render() {
   renderer.render(scene, camera);
-});
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
